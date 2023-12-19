@@ -104,7 +104,7 @@ def generate_silence_sound(duration) -> AudioSegment:
     return AudioSegment.silent(duration=duration * 1000)
 
 
-def Play(data: str, wpm: int, freq: int):
+def Play(data: str, wpm: int, freq: int, /, loop: bool):
     interval = 60 / (50 * wpm)
     sine_sound_1 = generate_sin_sound(freq, interval)
     sine_sound_3 = generate_sin_sound(freq, interval * 3)
@@ -132,8 +132,12 @@ def Play(data: str, wpm: int, freq: int):
         elif i == SLASH_:
             audio += silence * 7
             add_silence = False
-
-    play(audio)
+    if loop:
+        while True:
+            play(audio)
+            play(silence * 7)
+    else:
+        play(audio)
 
 
 @click.command()
@@ -144,9 +148,10 @@ def Play(data: str, wpm: int, freq: int):
     default=20,
     help="the speed, measured in how many units in a second (a unit is 50 beeps)",
 )
-def main(text, freq, wpm):
+@click.option("--loop", default=False, help="play the sound forever")
+def main(text, freq, wpm, loop):
     data = Encode(text)
-    Play(data, wpm, freq)
+    Play(data, wpm, freq, loop=loop)
 
 
 if __name__ == "__main__":
