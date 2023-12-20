@@ -69,7 +69,7 @@ TRANSLATE_: dict[str, tuple[str, ...]] = {
 LEGAL_CHARACTER_SET_ = set(TRANSLATE_.keys())
 
 
-def Encode(data: str, *, ignore_illegal_character=False, to_lower=True) -> str:
+def Encode(data: str, /, ignore_illegal_character, to_lower=True) -> str:
     if to_lower:
         data = data.lower()
     res = []
@@ -104,7 +104,7 @@ def generate_silence_sound(duration) -> AudioSegment:
     return AudioSegment.silent(duration=duration * 1000)
 
 
-def Play(data: str, wpm: int, freq: int, /, loop: bool):
+def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str):
     interval = 60 / (50 * wpm)
     sine_sound_1 = generate_sin_sound(freq, interval)
     sine_sound_3 = generate_sin_sound(freq, interval * 3)
@@ -132,6 +132,10 @@ def Play(data: str, wpm: int, freq: int, /, loop: bool):
         elif i == SLASH_:
             audio += silence * 7
             add_silence = False
+
+    if save != "":
+        audio.export(save, "wav")
+
     if loop:
         while True:
             play(audio)
@@ -141,17 +145,37 @@ def Play(data: str, wpm: int, freq: int, /, loop: bool):
 
 
 @click.command()
-@click.option("--text", help="the text to be converted", prompt="Enter text")
-@click.option("--freq", default=550, help="the frequency of generated sound")
+@click.option("-t", "--text", help="the text to be converted", prompt="Enter text")
+@click.option("-f", "--freq", default=550, help="the frequency of generated sound")
 @click.option(
     "--wpm",
     default=20,
     help="the speed, measured in how many units in a second (a unit is 50 beeps)",
 )
-@click.option("--loop", default=False, help="play the sound forever")
-def main(text, freq, wpm, loop):
-    data = Encode(text)
-    Play(data, wpm, freq, loop=loop)
+@click.option("--loop/--no-loop", default=False, help="play the sound forever")
+@click.option(
+    "--decode/--no-decode",
+    default=False,
+    help="print morse code representation for the text",
+)
+@click.option(
+    "--sound/--no-sound", default=True, help="Do not play the sound, exit immediately"
+)
+@click.option(
+    "--ignore-illegal/--no-ignore-illegal",
+    default=False,
+    help="Do not exit when reading illegal character.",
+)
+@click.option("--save", default="", help="save the audio to a file")
+def main(text, freq, wpm, loop, decode, sound, ignore_illegal, save):
+    """
+    Play beep sound in morse code.
+    """
+    data = Encode(text, ignore_illegal_character=ignore_illegal)
+    if decode:
+        print(data)
+    if sound:
+        Play(data, wpm, freq, loop=loop, save=save)
 
 
 if __name__ == "__main__":
