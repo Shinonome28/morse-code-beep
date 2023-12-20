@@ -2,6 +2,9 @@ from pydub import AudioSegment
 from pydub.playback import play
 import pydub.generators
 import click
+from base64 import b32encode
+
+TEST_STRING_ = "the quick brown fox jumps over the lazy dog 0123456789"
 
 DOT_ = "."
 DASH_ = "-"
@@ -68,10 +71,16 @@ TRANSLATE_: dict[str, tuple[str, ...]] = {
 
 LEGAL_CHARACTER_SET_ = set(TRANSLATE_.keys())
 
+WAVE_GENERATORS_: dict[str, pydub.generators.SignalGenerator] = {
+    "sin": pydub.generators.Sine,
+    "square": pydub.generators.Square,
+    "sawtooth": pydub.generators.Sawtooth,
+}
 
-def Encode(data: str, /, ignore_illegal_character, to_lower=True) -> str:
-    if to_lower:
-        data = data.lower()
+AVAILABLE_GENERATORS_ = list(WAVE_GENERATORS_.keys())
+
+
+def Encode(data: str, /, ignore_illegal_character) -> str:
     res = []
     for ch in data:
         if not (ch in LEGAL_CHARACTER_SET_ or ch.isspace()):
@@ -91,12 +100,12 @@ def generate_silence_sound(duration) -> AudioSegment:
     return AudioSegment.silent(duration=duration * 1000)
 
 
-def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str):
+def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str, wave: str):
     interval = 60 / (50 * wpm) * 1000
-    sine_sound_1 = pydub.generators.Sine(
+    sine_sound_1 = WAVE_GENERATORS_[wave](
         freq, sample_rate=44100, bit_depth=16
     ).to_audio_segment(duration=interval)
-    sine_sound_3 = pydub.generators.Sine(
+    sine_sound_3 = WAVE_GENERATORS_[wave](
         freq, sample_rate=44100, bit_depth=16
     ).to_audio_segment(duration=interval * 3)
     silence = AudioSegment.silent(duration=interval)
@@ -125,7 +134,13 @@ def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str):
             add_silence = False
 
     if save != "":
-        audio.export(save, "wav")
+        format = None
+        t = save.split(".")
+        if len(t) < 2:
+            format = "wav"
+        else:
+            format = t[-1]
+        audio.export(save, format)
 
     if loop:
         while True:
@@ -136,7 +151,12 @@ def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str):
 
 
 @click.command()
-@click.option("-t", "--text", help="the text to be converted", prompt="Enter text")
+@click.option(
+    "-t",
+    "--text",
+    help="The text to be converted. If not specified, will use the default test string.",
+    default=TEST_STRING_,
+)
 @click.option("-f", "--freq", default=550, help="the frequency of generated sound")
 @click.option(
     "--wpm",
@@ -157,16 +177,33 @@ def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str):
     default=False,
     help="Do not exit when reading illegal character.",
 )
-@click.option("--save", default="", help="save the audio to a file")
-def main(text, freq, wpm, loop, decode, sound, ignore_illegal, save):
+@click.option(
+    "--save",
+    default="",
+    help="Save the audio to a file. Automatically detect format by extension name.",
+)
+@click.option(
+    "--wave",
+    default="sin",
+    type=click.Choice(AVAILABLE_GENERATORS_),
+)
+@click.option(
+    "--base32/--no-base32",
+    default=False,
+    help="Encode the text in base32 before converting to morse code.",
+)
+def main(text, freq, wpm, loop, decode, sound, ignore_illegal, save, wave, base32):
     """
     Play beep sound in morse code.
     """
+    if base32:
+        text = b32encode(text.encode("utf8")).decode("ascii")
+    text = text.lower()
     data = Encode(text, ignore_illegal_character=ignore_illegal)
     if decode:
         print(data)
     if sound:
-        Play(data, wpm, freq, loop=loop, save=save)
+        Play(data, wpm, freq, loop=loop, save=save, wave=wave)
 
 
 if __name__ == "__main__":
