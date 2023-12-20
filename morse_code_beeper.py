@@ -1,6 +1,6 @@
-from io import BytesIO
 from pydub import AudioSegment
 from pydub.playback import play
+import pydub.generators
 import click
 
 DOT_ = "."
@@ -87,30 +87,21 @@ def Encode(data: str, /, ignore_illegal_character, to_lower=True) -> str:
     return "".join(res)
 
 
-def generate_sin_sound(freq, duration) -> AudioSegment:
-    import numpy as np
-    from scipy.io.wavfile import write
-
-    sampling_rate = 44100
-    t = np.arange(int(sampling_rate * duration)) / float(sampling_rate)
-    sin_wave = np.sin(2 * np.pi * freq * t)
-    sin_wave_int = np.int16(sin_wave * 32767)
-    memory_buffer = BytesIO()
-    write(memory_buffer, sampling_rate, sin_wave_int)
-    return AudioSegment.from_wav(memory_buffer)
-
-
 def generate_silence_sound(duration) -> AudioSegment:
     return AudioSegment.silent(duration=duration * 1000)
 
 
 def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str):
-    interval = 60 / (50 * wpm)
-    sine_sound_1 = generate_sin_sound(freq, interval)
-    sine_sound_3 = generate_sin_sound(freq, interval * 3)
-    silence = generate_silence_sound(interval)
+    interval = 60 / (50 * wpm) * 1000
+    sine_sound_1 = pydub.generators.Sine(
+        freq, sample_rate=44100, bit_depth=16
+    ).to_audio_segment(duration=interval)
+    sine_sound_3 = pydub.generators.Sine(
+        freq, sample_rate=44100, bit_depth=16
+    ).to_audio_segment(duration=interval * 3)
+    silence = AudioSegment.silent(duration=interval)
 
-    audio = AudioSegment.silent(0)
+    audio = AudioSegment.empty()
 
     add_silence = False
     for i in data:
