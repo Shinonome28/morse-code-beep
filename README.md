@@ -14,7 +14,7 @@ Generate beep sound for text "Hello,world!" and plays it forever (you can exit b
 python morse_code_beeper.py --text "Hello,world!" --forever
 ```
 
-Save the sound to a wav file (this is the only format supported) instead of playing it:
+Save the sound to a wav file instead of playing it:
 
 ```sh
 python morse_code_beeper.py --text "Hello,world!" --save a.wav --no-sound

@@ -160,7 +160,7 @@ def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str, wave: str):
 @click.option("-f", "--freq", default=550, help="the frequency of generated sound")
 @click.option(
     "--wpm",
-    default=20,
+    default=25,
     help="the speed, measured in how many units in a second (a unit is 50 beeps)",
 )
 @click.option("--loop/--no-loop", default=False, help="play the sound forever")
@@ -192,10 +192,15 @@ def Play(data: str, wpm: int, freq: int, /, loop: bool, save: str, wave: str):
     default=False,
     help="Encode the text in base32 before converting to morse code.",
 )
-def main(text, freq, wpm, loop, decode, sound, ignore_illegal, save, wave, base32):
+@click.option("--stdin/--no-stdin", default=False, help="Read from standard input.")
+def main(
+    text, freq, wpm, loop, decode, sound, ignore_illegal, save, wave, base32, stdin
+):
     """
     Play beep sound in morse code.
     """
+    if stdin:
+        text = input()
     if base32:
         text = b32encode(text.encode("utf8")).decode("ascii")
     text = text.lower()
